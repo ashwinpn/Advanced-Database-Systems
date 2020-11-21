@@ -123,3 +123,22 @@ class Lock:
     if locktype=="Write":
       self.locktype = locktype
       self.lockStatus = True
+
+pLock = None
+locks = []
+
+def presentLock(lock):
+  pLock = lock
+
+def changeLock(lock):
+  # Lock upgrade from read to write for a transaction
+  if lock.locktype != "Read":
+    print("Wrong lock type")
+  else:
+    sz = len(lock.transaction_list)
+    if not sz == 1:
+      print("Transactions are sharing the lock")
+    pLock = lock
+
+def shareLock(lock):
+        
