@@ -1,0 +1,2 @@
+NUM_SITES = 10
+NUM_DATA = 20

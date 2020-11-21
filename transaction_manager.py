@@ -1,8 +1,6 @@
 from collections import defaultdict
 from queue import Queue
-
-# Collect the transactionID, transactions, timestamp
-transactions = {}
+from config_params import *
 
 class Transaction:
   def __init__(self, transactionID, timestamp, state):
@@ -10,38 +8,42 @@ class Transaction:
     self.timestamp = timestamp
     # state = {Active, Aborted, Committed}
     self.state = state
-    # True for readOnly 
+    # True for readOnly
     self.read_type = False
     self.accessedSites = []
 
 
 class TransactionManager:
+
+  # Collect the transactionID, transactions, timestamp
+  transactions = {}
+  sites = {}
+
   def __init__(self, sites):
-    self.sites = sites
-    self.data_managers = []
-    for site in sites:
-      self.data_managers += [str(site)]
+    self.sites = {}
+    for siteId in range(1, NUM_SITES+1):
+        self.sites[siteId] = Site(siteId)
 
   def startTransaction(self, transaction):
-    transactions[transactionID] = transaction 
+    self.transactions[transaction.transactionID] = transaction
     print("TransactionStart: ", transactionID)
 
 
   def endTransaction(self, transaction, token):
-  # token [whether to commit / abort] determined by the transaction status  
-    if not transactions[transaction.transactionID]:
+  # token [whether to commit / abort] determined by the transaction status
+    if not self.transactions[transaction.transactionID]:
       print("No such transaction")
 
     # token = Abort
     for dmng in data_managers:
       # Release present lock
       # Also release queued locks
-    transaction.state = "Aborted"
-    transactions.pop(transaction.transactionID)
-    # Why did it abort? 
-    # Deadlock
-    # Site Problem
-    print("Transaction Aborted: ", transaction.transactionID)
+      transaction.state = "Aborted"
+      transactions.pop(transaction.transactionID)
+      # Why did it abort?
+      # Deadlock
+      # Site Problem
+      print("Transaction Aborted: ", transaction.transactionID)
 
     #token = Commit
     for dmng in data_managers:
@@ -49,7 +51,8 @@ class TransactionManager:
       # make data.status = PERMANENT
       # Release present lock
       # Also release queued locks
-      
+      pass
+
     transaction.state = "Committed"
     transactions.pop(transaction.transactionID)
     print("Transaction Committed: ", transaction.transactionID)
@@ -66,10 +69,10 @@ class TransactionManager:
           if transaction.transactionID == lock.TransactionID:
           # Need to commit
             res = data.value
-          # Else, create read lock  
+          # Else, create read lock
           # locks.createLock(READ,transaction.transactionID,data.dataID)
         transaction.accessedSites += [str(dmng.siteID)]
-        print("Read for",dmng.siteID, transaction.transactionID, data.dataID, res) 
+        print("Read for",dmng.siteID, transaction.transactionID, data.dataID, res)
 
   def write(self, transaction, data, value):
     if not transactions[transaction.transactionID]:
@@ -92,7 +95,7 @@ class TransactionManager:
           else:
             print("Error, other transaction has acquired the write lock")
 
-        # Else, create write lock  
+        # Else, create write lock
         # locks.createLock(WRITE,transaction.transactionID,data.dataID)
         # data.value = value
         # res = data.value
@@ -100,12 +103,18 @@ class TransactionManager:
         writeSites += [str(dmng.siteID)]
         print("Write for", writeSites, transaction.transactionID, data.dataID, res)
 
+  def dump(self):
+      for siteId in range(1, NUM_SITES+1):
+          site = self.sites[siteId]
+          flattened = site.flattenData()
+          print("site " + str(siteId) + " " + flattened)
+
 class DeadlockDetector:
   def detectDeadlock(self):
   def resolveDeadlock():
-    
 
-  
+
+
 
 class Lock:
   def __init__(self, transaction, data, locktype):
@@ -141,4 +150,4 @@ def changeLock(lock):
     pLock = lock
 
 def shareLock(lock):
-        
+

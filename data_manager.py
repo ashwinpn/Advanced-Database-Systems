@@ -1,6 +1,4 @@
-
-NUM_SITES = 10
-NUM_DATA = 20
+from config_params import *
 
 class Data:
     def __init__(self, dataId, value):
@@ -29,7 +27,8 @@ class Site:
         self.data = {}
         for dataId in range(1, NUM_DATA+1):
             if (dataId % 2 != 0):
-                if (dataId + 1) % NUM_SITES == siteId:
+                # x1 -> site 2, x3 -> site 4, x11 -> site 2, x15 -> site 6, etc.
+                if 1 + (dataId % NUM_SITES) == siteId:
                     self.data[dataId] = Data(dataId, 10 * dataId)
             else:
                 self.data[dataId] = Data(dataId, 10 * dataId)
@@ -42,25 +41,14 @@ class Site:
                 res.append(d.name+": "+str(d.value))
         return ", ".join(res)
 
-class DataManager:
-    # dict of siteId -> Site
-    sites = {}
-
-    def __init__(self):
-        self.sites = {}
-        for siteId in range(1, NUM_SITES+1):
-            self.sites[siteId] = Site(siteId)
-
-
-
     def fail(self, site):
         pass
 
     def recover(self, site):
         pass
 
-    def dump(self):
-        for siteId in range(1, NUM_SITES+1):
-            site = self.sites[siteId]
-            flattened = site.flattenData()
-            print("site " + str(siteId) + " " + flattened)
+
+
+
+
+
