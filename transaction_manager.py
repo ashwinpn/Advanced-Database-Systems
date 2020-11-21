@@ -104,5 +104,20 @@ class DeadlockDetector:
   def detectDeadlock(self):
   def resolveDeadlock():
     
+
+  
+
 class Lock:
+  def __init__(self, transaction, data, locktype):
+    # type = {Read, Write}
+    self.data = data
+    self.transaction = transaction
+    self.locktype = "unset"
+    if locktype=="Read":
+      # Many Transactions can share a readLock
+      self.locktype = locktype
+      self.transaction_list = [transaction.transactionID]
+
+    if locktype=="Write":
+      self.locktype = locktype
   
