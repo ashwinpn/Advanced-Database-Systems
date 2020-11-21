@@ -113,11 +113,13 @@ class Lock:
     self.data = data
     self.transaction = transaction
     self.locktype = "unset"
+    self.lockStatus = False
     if locktype=="Read":
       # Many Transactions can share a readLock
       self.locktype = locktype
       self.transaction_list = [transaction.transactionID]
+      self.lockStatus = True
 
     if locktype=="Write":
       self.locktype = locktype
-  
+      self.lockStatus = True
