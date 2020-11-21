@@ -80,33 +80,25 @@ class Database:
 
     def handleRequest(self, request):
         requestType, param1, param2, param3 = request.flatten()
+        print("-------- Handling request", request.requestType, request.param1, request.param2, request.param3)
 
         if requestType == "begin":
-            print("-------- Handling request", request.requestType, request.param1, request.param2, request.param3)
-            return
-
             # Check for Deadlock detection here
             self.time_tick += 1
             transaction = Transaction(param1, self.time_tick)
             self.TM.startTransaction(transaction)
         elif requestType == "W":
-            print("-------- Handling request", request.requestType, request.param1, request.param2, request.param3)
-            return
-
             transaction = self.TM.transactions[param1]
             if (transaction == None):
                 raise Exception("Write attempt has been passed to a transaction which has not been started yet")
             # Write transaction
         elif requestType == "end":
-            print("-------- Handling request", request.requestType, request.param1, request.param2, request.param3)
-            return
             transaction = self.TM.transactions[param1]
             if (transaction == None):
                 raise Exception("End command has been passed to a transaction which has not been started yet")
             #TM.endTransaction(transaction)
         elif requestType == "dump":
-            print("-------- Handling request", request.requestType, request.param1, request.param2, request.param3)
-            self.DM.dump()
+            self.TM.dump()
         else:
             "Not Implemented PASSING"
 
