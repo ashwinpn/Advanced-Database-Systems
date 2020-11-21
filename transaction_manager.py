@@ -104,3 +104,5 @@ class DeadlockDetector:
   def detectDeadlock(self):
   def resolveDeadlock():
     
+class Lock:
+  
