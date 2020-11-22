@@ -2,23 +2,9 @@
 import argparse
 from transaction_manager import *
 
-class Request:
-    requestType = None
-    param1 = None
-    param2 = None
-    param3 = None
-    def __init__(self, requestType, param1, param2, param3):
-        self.requestType = requestType
-        self.param1 = param1
-        self.param2 = param2
-        self.param3 = param3
-
-    def flatten(self):
-        return self.requestType, self.param1, self.param2, self.param3
-
+time_tick = 0
 
 class Database:
-    time_tick = 0
 
     TM = None
 
@@ -35,9 +21,14 @@ class Database:
                     request = self.getRequestFromLine(line)
                     if request is None:
                         continue
-                    self.handleRequest(request)
+                    self.TM.handleRequest(request)
 
     def getRequestFromLine(self, line):
+        global time_tick
+
+        if (line == "\n"):
+            time_tick += 1
+
         #print(line)
         splitted = line.split(")")
         if (len(splitted) != 2):
@@ -62,40 +53,15 @@ class Database:
             if len(splitted[0]) > 0: param1 = splitted[0]
         elif len(splitted) == 2:
             if len(splitted[0]) > 0: param1 = splitted[0]
-            if len(splitted[1]) > 0: param2 = splitted[1]
+            if len(splitted[1]) > 0: param2 = int(splitted[1][1:])
         elif len(splitted) == 3:
             if len(splitted[0]) > 0: param1 = splitted[0]
-            if len(splitted[1]) > 0: param2 = splitted[1]
-            if len(splitted[2]) > 0: param3 = splitted[2]
+            if len(splitted[1]) > 0: param2 = int(splitted[1][1:])
+            if len(splitted[2]) > 0: param3 = int(splitted[2])
         else:
             return None
 
         return Request(requestType, param1, param2, param3)
-
-
-
-    def handleRequest(self, request):
-        requestType, param1, param2, param3 = request.flatten()
-        print("-------- Handling request", request.requestType, request.param1, request.param2, request.param3)
-
-        self.TM.handleDeadlocks()
-
-        self.time_tick += 1
-        if requestType == "begin":
-            transaction = Transaction(param1, self.time_tick)
-            self.TM.startTransaction(transaction)
-        elif requestType == "W":
-            transaction = self.TM.transactions[param1]
-            dataId = int(param2[1:])
-            newValue = param3
-            self.TM.write(transaction, dataId, newValue)
-        elif requestType == "end":
-            transaction = self.TM.transactions[param1]
-            self.TM.endTransaction(transaction, "Commit")
-        elif requestType == "dump":
-            self.TM.dump()
-        else:
-            "Not Implemented PASSING"
 
 
 

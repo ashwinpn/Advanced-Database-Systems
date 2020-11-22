@@ -1,12 +1,19 @@
 from config_params import *
 
+global time_tick
+
 class Data:
     def __init__(self, dataId, value):
         self.dataId = dataId
         self.name = "x"+str(dataId)
         self.value = value
+        self.commited = time_tick
+
     def copy(self):
         return Data(self.dataId, self.value)
+
+    def toString(self):
+        return self.name+": "+str(self.value)
 
 class Lock:
     def __init__(self, lockType, transactionID, data):
@@ -17,8 +24,8 @@ class Lock:
 
 class Site:
     def __init__(self, siteId):
-        # enum states {Available, Not_Available, Recovering}
-        self.state = "Available"
+        # enum states {AVAILABLE, FAILED}
+        self.state = "AVAILABLE"
 
         # int siteId
         self.siteId = siteId
@@ -61,18 +68,12 @@ class Site:
             return trans
         elif (lockType == "READ"):
             if (presentLock == "WRITE"):
-                pass
+                trans = presentLock.transactions.copy()
+                trans.discard(transactionID)
+                return trans
             elif (presentLock == "READ"):
-                pass
-            elif (presentLock == "READ_ONLY"):
-                pass
-        elif (lockType == "READ_ONLY"):
-            if (presentLock == "WRITE"):
-                pass
-            elif (presentLock == "READ"):
-                pass
-            elif (presentLock == "READ_ONLY"):
-                pass
+                return set()
+
 
     def lock(self, lockType, transactionID, dataId):
         if dataId not in self.data:
@@ -94,6 +95,11 @@ class Site:
             print(transactionID, "tries to update a data", dataId,"which it either does not have WRITE access or not any access at all")
 
         self.lockTable[dataId].dataInMemory.value = newValue
+
+    def getData(self, dataId):
+        if dataId not in self.data:
+            return
+        return self.data[dataId]
 
     def commit(self, transactionID, dataId):
         if dataId not in self.data:
@@ -120,11 +126,28 @@ class Site:
             if len(self.lockTable[dId].transactions) == 0:
                 del self.lockTable[dId]
 
-    def fail(self, site):
-        pass
+    def checkReadOnly(self, dataId, transTimestemp):
+        if dataId not in self.data:
+            None
+        commitTime = self.data[dataId].commited
+        return commitTime != -1 and commitTime < transTimestemp
 
-    def recover(self, site):
-        pass
+    def checkDataExists(self, dataId):
+        return dataId in self.data
+
+    def checkRead(self, dataId):
+        if dataId not in self.data:
+            None
+        return self.data[dataId].commited != -1
+
+    def fail(self):
+        self.state = "FAILED"
+
+    def recover(self):
+        # make all data commited = False
+        self.state = "AVAILABLE"
+        for dataId, data in self.data.items():
+            data.commited = -1
 
 
 
