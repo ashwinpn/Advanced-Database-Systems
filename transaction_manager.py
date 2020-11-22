@@ -100,7 +100,6 @@ class TransactionManager:
         transIds.remove(transaction.transactionID)
         if (len(transIds) == 0):
           transactionsNotWaitingForAnyone.add(waitingTransId)
-        waitingTransactions.add(waitingTransId)
 
     for tId in transactionsNotWaitingForAnyone:
       del self.waitsFor[tId]
@@ -117,8 +116,9 @@ class TransactionManager:
 
     #print("self.transactions", self.transactions, "self.waitsFor", self.waitsFor)
     for waitingTransactionID in transaction.waitedBy:
-      request = self.transactions[waitingTransactionID].requestToHandle
-      self.handleRequest(request)
+      if waitingTransactionID in self.transactions:
+        request = self.transactions[waitingTransactionID].requestToHandle
+        self.handleRequest(request)
 
     transaction.waitedBy = []
 
@@ -229,7 +229,7 @@ class TransactionManager:
 
     for tranId in waitForTrans:
       self.waitsFor[transaction.transactionID].add(tranId)
-      self.transactions[tranId].append(transaction.transactionID)
+      self.transactions[tranId].waitedBy.append(transaction.transactionID)
 
   def dump(self):
     for siteId in range(1, NUM_SITES+1):
@@ -307,7 +307,7 @@ class TransactionManager:
       trans = self.getTransactionsInCycle(pair[1], pair[0])
       print("trans", trans)
       #trans.sort(key = transCompare)
-      trans = sortTransByAge(trans)
+      trans = self.sortTransByAge(trans)
       transToAbort.append(trans[0])
       print("trans", trans)
 
