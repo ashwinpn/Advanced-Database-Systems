@@ -1,4 +1,5 @@
 from config_params import *
+from main import *
 
 global time_tick
 

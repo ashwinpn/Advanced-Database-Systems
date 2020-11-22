@@ -1,12 +1,7 @@
-#from collections import defaultdict
-#from queue import Queue
-from site import *
 from config_params import *
 from site_class import *
+from main import *
 from functools import cmp_to_key
-
-
-global time_tick
 
 class Transaction:
   def __init__(self, transactionID, timestamp, isReadOnly):
@@ -22,7 +17,6 @@ class Transaction:
     self.waitedBy = []
     self.isReadOnly = isReadOnly
 
-
 class Request:
     requestType = None
     param1 = None
@@ -36,7 +30,6 @@ class Request:
 
     def flatten(self):
         return self.requestType, self.param1, self.param2, self.param3
-
 
 class TransactionManager:
 
@@ -64,8 +57,8 @@ class TransactionManager:
 
     print("TransactionStart: ", transaction.transactionID)
 
-
   def endTransaction(self, transaction, token):
+    print("ENDING TRANSACTION", transaction.transactionID)
     print("self.transactions", self.transactions, "self.waitsFor", self.waitsFor)
     # token [whether to commit / abort] determined by the transaction status
     if not self.transactions[transaction.transactionID]:
@@ -81,6 +74,7 @@ class TransactionManager:
       #token = Commit
       for siteId, site in self.sites.items():
         for dataId in transaction.dataLocked:
+          print("Commit ->>>", siteId, dataId)
           site.commit(transaction.transactionID, dataId)
 
       transaction.state = "Committed"
@@ -114,7 +108,6 @@ class TransactionManager:
 
     transaction.waitedBy = []
 
-
   def readOnly(self, transaction, dataId):
     if not self.transactions[transaction.transactionID]:
       print("No such transaction with id", transaction.transactionID)
@@ -141,10 +134,6 @@ class TransactionManager:
         return
 
     print(transaction.transactionID, "could not find any valid copy to READ_ONLY for data", dataId)
-
-
-
-
 
   def read(self, transaction, dataId):
     if not self.transactions[transaction.transactionID]:
@@ -187,7 +176,7 @@ class TransactionManager:
     # all write locks can be accessed
 
     soFarLockedSites = []
-    lockedAllSites = true;
+    lockedAllSites = True;
     for siteId, site in self.sites.items():
       if (site.state != "AVAILABLE"):
         continue
@@ -219,6 +208,7 @@ class TransactionManager:
     else:
       transaction.dataLocked.add(dataId)
       for siteId in soFarLockedSites:
+        site = self.sites[siteId]
         site.update(transaction.transactionID, dataId, newValue)
 
   def waitForMethod(self, transaction, waitForTrans):
@@ -314,6 +304,7 @@ class TransactionManager:
       self.endTransaction(self.transactions[tId], "Abort")
 
   def handleRequest(self, request):
+    global time_tick
     # None has been passed as request
     if not request:
       return
