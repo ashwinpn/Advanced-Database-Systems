@@ -65,23 +65,26 @@ class TransactionManager:
     else:
       #token = Commit
       for site in sites:
-        # Commit the data value
-        # make data.status = PERMANENT
-        # Release present lock
-        # Also release queued locks
-        pass
+        for dataId in dataLocked:
+          site.commit(transaction.transactionID, dataId)
 
       transaction.state = "Committed"
       transactions.pop(transaction.transactionID)
-
-      if transaction.transactionID in waitedBy[transaction.transactionID]:
-        for waitingTransactionId in waitedBy[transaction.transactionID]:
-          waitingSet = waitsFor[waitingTransactionID]
-          waitingSet.pop(transaction.transactionID)
-
-        del waitedBy[transaction.transactionID]
-
       print("Transaction Committed: ", transaction.transactionID)
+
+    if transaction.transactionID in waitedBy[transaction.transactionID]:
+      for waitingTransactionId in waitedBy[transaction.transactionID]:
+        waitingSet = waitsFor[waitingTransactionID]
+        waitingSet.pop(transaction.transactionID)
+        if (len(waitingSet) == 0):
+          del waitsFor[waitingTransactionID]
+
+      del waitedBy[transaction.transactionID]
+
+    for site in sites:
+      site.releaseLocks(transaction.dataLocked)
+    transaction.dataLocked = {}
+
 
   def read(self, transaction, data):
     pass
@@ -101,40 +104,37 @@ class TransactionManager:
     #     transaction.accessedSites += [str(dmng.siteID)]
     #     print("Read for",dmng.siteID, transaction.transactionID, data.dataID, res)
 
-  def write(self, transaction, data, value):
+  def write(self, transaction, dataId, newValue):
     if not self.transactions[transaction.transactionID]:
-      print("No such transaction")
+      print("No such transaction with id", transaction.transactionID)
       return
 
     # Need to check site status
     # If all required sites are Available,
     # all write locks can be accessed
     for site in sites:
-      waitForTrans = checkLock("WRITE", transaction, data)
+      waitForTrans = checkLock("WRITE", transaction.transactionID, dataId)
+      if (waitForTrans is None):
+        continue
+
       if len(waitForTrans) == 0:
-        lock("WRITE", transaction, data)
-        self.dataLocked.insert(data.dataId)
+        lock("WRITE", transaction.transactionID, dataId)
+        transaction.dataLocked.add(dataId)
+        site.update(transaction.transactionID, dataId, newValue)
+
       else:
-        self.waitFor(waitForTrans, transaction)
+        self.waitForMethod(transaction, waitForTrans)
 
+    def waitForMethod(self, transaction, waitForTrans):
+      if transaction.transactionID not in self.waitsFor:
+        self.waitsFor[transaction.transactionID] = {}
 
-      # if data.dataId not in site.lockTable:
-      #   site.lockTable[data.dataId] = Lock("WRITE", transaction)
-      #   transaction.accessedSites.append(site.siteID)
-      #   transaction.writeSites.append(site.siteID)
-      # else:
-      #   lock = site.lockTable[data.dataId]
-      #   for t in lock.transactions:
-      #     tId = t.transactionID
-      #     if transaction.transactionID not in self.waitsFor:
-      #       self.waitsFor[transaction.transactionID] = {}
-      #     self.waitsFor[transaction.transactionID].add(tId)
+      for tranId in waitForTrans:
+        self.waitsFor[transaction.transactionID].add(tranId)
+        if tranId not in self.waitedBy:
+          self.waitedBy[tranId].add(transaction.transactionID)
 
-      #     if tId not in self.waitedBy:
-      #       self.waitedBy[tId] = {}
-      #     self.waitedBy[tId].add(transaction.transactionID)
-
-      print("Write for", writeSites, transaction.transactionID, data.dataId, res)
+      print("Write for", writeSites, transaction.transactionID, dataId, res)
 
   def dump(self):
     for siteId in range(1, NUM_SITES+1):
@@ -142,47 +142,49 @@ class TransactionManager:
         flattened = site.flattenData()
         print("site " + str(siteId) + " " + flattened)
 
-class DeadlockDetector:
-  def detectDeadlock(self):
-    pass
-  def resolveDeadlock(self):
-    pass
+
+  def handleDeadlocks(self):
+    print("Trying to find and handle deadlocks")
+    deadlocks = [] # [(T#, T#)]
+    visited = {}
+    for tranId in self.waitsFor:
+      if (transId not in visited):
+        currentlyVisiting = {}
+        detectDeadlock(transId, currentlyVisiting, visited, deadlocks)
+
+    print("Result of finding deadlocks:", deadlocks)
+
+    resolveDeadlocks(deadlocks)
 
 
+  def detectDeadlock(self, currTransId, currentlyVisiting, visited, deadlocks):
+
+    currentlyVisiting.add(currTransId)
+
+    if (currTransId in self.waitsFor):
+      for transId in self.waitsFor[currTransId]:
+        if (transId in currentlyVisiting):
+          deadlocks.append((currTransId, transId))
+        elif (transId not in visited):
+          self.detectDeadlock(transId, currentlyVisiting, visited, deadlocks)
+
+    currentlyVisiting.pop(currTransId)
+    visited.add(currTransId)
 
 
-# class Lock:
-#   def __init__(self, transaction, data, locktype):
-#     # type = {Read, Write}
-#     self.data = data
-#     self.transaction = transaction
-#     self.locktype = "unset"
-#     self.lockStatus = False
-#     if locktype=="Read":
-#       # Many Transactions can share a readLock
-#       self.locktype = locktype
-#       self.transaction_list = [transaction.transactionID]
-#       self.lockStatus = True
+  def transCompare(self, tranId1, tranId2):
+    if not tranId1 in transactions or not tranId2 in transactions:
+      raise Exception("Both tranIds should be in transactions list")
 
-#     if locktype=="Write":
-#       self.locktype = locktype
-#       self.lockStatus = True
+    return transactions[tranId1].timestamp < transactions[tranId2].timestamp
 
-#   pLock = None
-#   locks = []
+  def resolveDeadlock(self, deadlocks):
+    transToAbort = []
+    for pair in deadlocks:
+      trans = self.getTransactionsInCycle(pair[1], pair[0])
+      trans.sort(key = self.transCompare)
+      transToAbort.append(trans[0])
 
-#   def presentLock(lock):
-#     pLock = lock
-
-#   def changeLock(lock):
-#     # Lock upgrade from read to write for a transaction
-#     if lock.locktype != "Read":
-#       print("Wrong lock type")
-#     else:
-#       sz = len(lock.transaction_list)
-#       if not sz == 1:
-#         print("Transactions are sharing the lock")
-#       pLock = lock
-
-#   def shareLock(lock):
-
+    for tId in transToAbort:
+      self.endTransaction(self.transactions[tId], "Abort")
+    print("Resolved Deadlock by aborting following transactions", transToAbort)
