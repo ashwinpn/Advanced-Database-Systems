@@ -1,20 +1,26 @@
 from config_params import *
 from main import *
 
-global time_tick
-
 class Data:
-    def __init__(self, dataId, value):
+    def __init__(self, dataId, value, oldCommitedCopies):
         self.dataId = dataId
         self.name = "x"+str(dataId)
         self.value = value
         self.commited = time_tick
+
+    def __init__(self, dataId, value):
+        self.dataId = dataId
+        self.name = "x"+str(dataId)
+        self.value = value
 
     def copy(self):
         return Data(self.dataId, self.value)
 
     def toString(self):
         return self.name+": "+str(self.value)
+
+    def __str__(self):
+        return self.toString()
 
 class Lock:
     def __init__(self, lockType, transactionID, data):
@@ -24,6 +30,9 @@ class Lock:
         self.dataInMemory = data
 
 class Site:
+    # timestamp -> value
+    oldCommitedCopies = {}
+
     def __init__(self, siteId):
         # enum states {AVAILABLE, FAILED}
         self.state = "AVAILABLE"
@@ -41,8 +50,10 @@ class Site:
                 # x1 -> site 2, x3 -> site 4, x11 -> site 2, x15 -> site 6, etc.
                 if 1 + (dataId % NUM_SITES) == siteId:
                     self.data[dataId] = Data(dataId, 10 * dataId)
+                    self.oldCommitedCopies[dataId] = [(time_tick, self.data[dataId])]
             else:
                 self.data[dataId] = Data(dataId, 10 * dataId)
+                self.oldCommitedCopies[dataId] = [(time_tick, self.data[dataId])]
 
     def flattenData(self):
         res = []
@@ -97,12 +108,8 @@ class Site:
 
         self.lockTable[dataId].dataInMemory.value = newValue
 
-    def getData(self, dataId):
-        if dataId not in self.data:
-            return
-        return self.data[dataId]
-
     def commit(self, transactionID, dataId):
+        global time_tick
         if dataId not in self.data:
             return
 
@@ -115,14 +122,16 @@ class Site:
             if transactionID not in lock.transactions:
                 print(transactionID, "tries to commit a data", dataId, "which it does not lock access at all")
             else:
-                self.data[dataId] = lock.dataInMemory
+                self.data[dataId].value = lock.dataInMemory.value
+                print("COMMITING WITH TIMESTAMP", time_tick, "with VALUE", self.data[dataId].value)
+                self.oldCommitedCopies[dataId].append((time_tick, self.data[dataId]))
 
 
     def releaseLocks(self, transactionID, lockedDataIds):
         for dId in lockedDataIds:
             if dId not in self.data:
                 continue
-            print(self.siteId, transactionID, dId)
+            #print(self.siteId, transactionID, dId)
             self.lockTable[dId].transactions.remove(transactionID)
             if len(self.lockTable[dId].transactions) == 0:
                 del self.lockTable[dId]
@@ -130,8 +139,32 @@ class Site:
     def checkReadOnly(self, dataId, transTimestemp):
         if dataId not in self.data:
             None
-        commitTime = self.data[dataId].commited
-        return commitTime != -1 and commitTime < transTimestemp
+
+        for oldCopy in self.oldCommitedCopies[dataId][::-1]:
+            commitTime = oldCopy[0]
+            if commitTime == -1:
+                return False
+            if commitTime < transTimestemp:
+                return True
+
+        return False
+
+    def getDataReadOnly(self, dataId, transTimestemp):
+        if dataId not in self.data:
+            return None
+
+        print("READ_ONLY: ", self.oldCommitedCopies[dataId])
+
+        for oldCopy in self.oldCommitedCopies[dataId][::-1]:
+
+            commitTime = oldCopy[0]
+            print("transTimestemp", transTimestemp, "commitTime", commitTime, oldCopy[1].toString())
+            if commitTime == -1:
+                return None
+            if commitTime < transTimestemp:
+                return oldCopy[1]
+
+        return None
 
     def checkDataExists(self, dataId):
         return dataId in self.data
@@ -139,7 +172,12 @@ class Site:
     def checkRead(self, dataId):
         if dataId not in self.data:
             return None
-        return self.data[dataId].commited != -1
+        return self.oldCommitedCopies[dataId][-1][0] != -1
+
+    def getData(self, dataId):
+        if dataId not in self.data:
+            return
+        return self.data[dataId]
 
     def fail(self):
         self.state = "FAILED"
@@ -149,7 +187,7 @@ class Site:
         # make all data commited = False
         self.state = "AVAILABLE"
         for dataId, data in self.data.items():
-            data.commited = -1
+            data.oldCopies.append((-1, None))
 
         #self.lockTable = {}
 

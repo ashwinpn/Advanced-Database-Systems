@@ -80,7 +80,7 @@ class TransactionManager:
       transaction.state = "Aborted"
       self.transactions.pop(transaction.transactionID)
 
-      print("Transaction Aborted: ", transaction.transactionID)
+      print("!!!!!!!!!!!!!!!!!!!   Transaction Aborted: ", transaction.transactionID)
     else:
       #token = Commit
       for siteId, dataId in transaction.writeLockedSites:
@@ -89,7 +89,7 @@ class TransactionManager:
 
       transaction.state = "Committed"
       self.transactions.pop(transaction.transactionID)
-      print("Transaction Committed: ", transaction.transactionID)
+      print(".................. Transaction Committed: ", transaction.transactionID)
 
 
     #Do cleanups
@@ -135,13 +135,13 @@ class TransactionManager:
 
     if (not isDataReplicated(dataId)) and len(sitesHoldingData) == 1:
       site = sitesHoldingData[0]
-      d = site.getData(dataId)
+      d = site.getDataReadOnly(dataId, transaction.timestamp)
       print(d.toString())
       return
     elif (isDataReplicated(dataId) and len(sitesHoldingData) > 1):
       for site in sitesHoldingData:
         if site.checkReadOnly(dataId, transaction.timestamp):
-          d = site.getData(dataId)
+          d = site.getDataReadOnly(dataId, transaction.timestamp)
           print(d.toString())
           return
 
@@ -193,31 +193,33 @@ class TransactionManager:
       if (site.state != "AVAILABLE"):
         continue
 
-      print("Checking to get Write lock for site", siteId, "for dataId", dataId)
+      #print("Checking to get Write lock for site", siteId, "for dataId", dataId)
       waitForTrans = site.checkLock("WRITE", transaction.transactionID, dataId)
-      print("waitForTrans", waitForTrans)
+      #print("waitForTrans", waitForTrans)
 
       # Data is not present in site, so move on - not a failure to lock
       if (waitForTrans is None):
         continue
 
       if len(waitForTrans) == 0:
-        print("+++ Got the Write lock for site", siteId)
+        #print("+++ Got the Write lock for site", siteId)
         site.lock("WRITE", transaction.transactionID, dataId)
         soFarLockedSites.append(siteId)
-        print(transaction.transactionID, "got the lock for", dataId, "and updated data to new value", newValue)
+        #print(transaction.transactionID, "got the lock for", dataId, "and updated data to new value", newValue)
       else:
         self.waitForMethod(transaction, waitForTrans)
         transaction.requestToHandle = Request("W", transaction.transactionID, dataId, newValue)
         lockedAllAvailableSites = False
-        print(transaction.transactionID, "did not get lock for", dataId, "will wait for tranasactions", waitForTrans)
+        #print(transaction.transactionID, "did not get lock for", dataId, "will wait for tranasactions", waitForTrans)
 
     # If we couldnt get all locks for available sites release others
     if lockedAllAvailableSites == False:
+      print("Did not get locks for all available sites for T", transaction.transactionID, "for dataId", dataId)
       for siteId in soFarLockedSites:
         site = self.sites[siteId]
         site.releaseLocks(transaction.transactionID, [dataId])
     else:
+      print("Got locks for all available sites for T", transaction.transactionID, "for dataId", dataId)
       for siteId in soFarLockedSites:
         transaction.writeLockedSites.add((siteId, dataId))
         site = self.sites[siteId]
@@ -246,9 +248,9 @@ class TransactionManager:
         currentlyVisiting = set()
         self.detectDeadlock(tranId, currentlyVisiting, visited, deadlocks)
 
-    if (len(deadlocks) > 0): print("****************************************** Found deadlocks:", deadlocks)
-
-    self.resolveDeadlocks(deadlocks)
+    if (len(deadlocks) > 0):
+      print("****************************************** Found deadlocks:", deadlocks)
+      self.resolveDeadlocks(deadlocks)
 
   def detectDeadlock(self, currTransId, currentlyVisiting, visited, deadlocks):
 
@@ -327,6 +329,7 @@ class TransactionManager:
     self.handleDeadlocks()
 
     time_tick += 1
+    print("time_tick", time_tick)
     if requestType == "begin":
       transaction = Transaction(param1, time_tick, False)
       self.startTransaction(transaction)
