@@ -5,12 +5,14 @@ class Data:
         self.dataId = dataId
         self.name = "x"+str(dataId)
         self.value = value
+    def copy(self):
+        return Data(self.dataId, self.value)
 
 class Lock:
-    def __init__(self, lockType, transaction, data):
+    def __init__(self, lockType, transactionID, data):
         # lockType = {READ, WRITE, READ_ONLY}
         self.lockType = lockType
-        self.transactions = {transaction.transactionId}
+        self.transactions = {transactionID}
         self.dataInMemory = data
 
 class Site:
@@ -44,16 +46,18 @@ class Site:
 
     # returns set of transactionIds must be waited for
     def checkLock(self, lockType, transactionID, dataId):
+        #print(dataId, self.data)
         if dataId not in self.data:
             return None
 
+        if dataId not in self.lockTable:
+            return set()
+
         presentLock = self.lockTable[dataId]
-        if presentLock is None:
-            return {}
 
         if (lockType == "WRITE"):
             trans = presentLock.transactions.copy()
-            trans.pop(transactionID)
+            trans.discard(transactionID)
             return trans
         elif (lockType == "READ"):
             if (presentLock == "WRITE"):
@@ -75,7 +79,7 @@ class Site:
             return
 
         # Transaction has already got same type of lock on this data
-        if dataId in self.lockTable[dataId] and lockType == self.lockTable[dataId].lockType and transactionID in self.lockTable[dataId]:
+        if dataId in self.lockTable and lockType == self.lockTable[dataId].lockType and transactionID in self.lockTable[dataId]:
             return
 
         # dataId has to be in self.data and we are adding copy of the data to lock table
@@ -86,10 +90,10 @@ class Site:
         if dataId not in self.data:
             return
 
-        if transactionID not in self.data[dataId].transactions or self.data[dataId].lockType != "WRITE":
+        if transactionID not in self.lockTable[dataId].transactions or self.lockTable[dataId].lockType != "WRITE":
             print(transactionID, "tries to update a data", dataId,"which it either does not have WRITE access or not any access at all")
 
-        self.data[dataId].dataInMemory.value = newValue
+        self.lockTable[dataId].dataInMemory.value = newValue
 
     def commit(self, transactionID, dataId):
         if dataId not in self.data:
@@ -107,12 +111,12 @@ class Site:
                 self.data[dataId] = lock.dataInMemory
 
 
-    def releaseLocks(self, lockedDataIds):
+    def releaseLocks(self, transactionID, lockedDataIds):
         for dId in lockedDataIds:
             if dId not in self.data:
                 continue
 
-            self.lockTable[dId].transactions.pop(transaction.transactionID)
+            self.lockTable[dId].transactions.remove(transactionID)
             if len(self.lockTable[dId].transactions) == 0:
                 del self.lockTable[dId]
 

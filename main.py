@@ -86,10 +86,12 @@ class Database:
             self.TM.startTransaction(transaction)
         elif requestType == "W":
             transaction = self.TM.transactions[param1]
-            self.TM.write(transaction, param2, param3)
+            dataId = int(param2[1:])
+            newValue = param3
+            self.TM.write(transaction, dataId, newValue)
         elif requestType == "end":
             transaction = self.TM.transactions[param1]
-            TM.endTransaction(transaction)
+            self.TM.endTransaction(transaction, "Commit")
         elif requestType == "dump":
             self.TM.dump()
         else:

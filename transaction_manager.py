@@ -2,6 +2,8 @@
 #from queue import Queue
 from site import *
 from config_params import *
+from site_class import *
+from functools import cmp_to_key
 
 
 
@@ -15,9 +17,8 @@ class Transaction:
     # True for readOnly
     self.read_type = False
     self.accessedSites = []
-    self.writeSites = []
-    self.waitingRequest = None
-    self.dataLocked = {}
+    self.dataLocked = set()
+    self.requestToHandle = None
 
 
 class TransactionManager:
@@ -55,39 +56,37 @@ class TransactionManager:
       return
 
 
+
     if (token == "Abort"):
-      # token = Abort
-      for site in self.sites:
-        # Release present lock
-        # Also release queued locks
-        transaction.state = "Aborted"
-        transactions.pop(transaction.transactionID)
-        # Why did it abort?
-        # Deadlock
-        # Site Problem
+      transaction.state = "Aborted"
+      self.transactions.pop(transaction.transactionID)
+
       print("Transaction Aborted: ", transaction.transactionID)
     else:
       #token = Commit
-      for site in self.sites:
-        for dataId in dataLocked:
+      for siteId, site in self.sites.items():
+        for dataId in transaction.dataLocked:
           site.commit(transaction.transactionID, dataId)
 
       transaction.state = "Committed"
-      transactions.pop(transaction.transactionID)
+      self.transactions.pop(transaction.transactionID)
       print("Transaction Committed: ", transaction.transactionID)
 
-    if transaction.transactionID in waitedBy[transaction.transactionID]:
-      for waitingTransactionId in waitedBy[transaction.transactionID]:
-        waitingSet = waitsFor[waitingTransactionID]
-        waitingSet.pop(transaction.transactionID)
+    # Remove from waits-for graph
+    if transaction.transactionID in self.waitedBy:
+      for waitingTransactionID in self.waitedBy[transaction.transactionID]:
+        waitingSet = self.waitsFor[waitingTransactionID]
+        waitingSet.remove(transaction.transactionID)
         if (len(waitingSet) == 0):
-          del waitsFor[waitingTransactionID]
+          del self.waitsFor[waitingTransactionID]
+      del self.waitedBy[transaction.transactionID]
 
-      del waitedBy[transaction.transactionID]
+      # Inform waiting transactions to try to continue handling their requests
 
-    for site in self.sites:
-      site.releaseLocks(transaction.dataLocked)
-    transaction.dataLocked = {}
+    # Remove from site locks
+    for siteId, site in self.sites.items():
+      site.releaseLocks(transaction.transactionID, transaction.dataLocked)
+    transaction.dataLocked = set()
 
 
   def read(self, transaction, data):
@@ -117,12 +116,15 @@ class TransactionManager:
     # Need to check site status
     # If all required sites are Available,
     # all write locks can be accessed
-    for site in self.sites:
+    for siteId, site in self.sites.items():
+      print("Checking to get Write lock for site", siteId)
       waitForTrans = site.checkLock("WRITE", transaction.transactionID, dataId)
+      print("waitForTrans", waitForTrans)
       if (waitForTrans is None):
         continue
 
       if len(waitForTrans) == 0:
+        print("+++ Got the Write lock for site", siteId)
         site.lock("WRITE", transaction.transactionID, dataId)
         transaction.dataLocked.add(dataId)
         site.update(transaction.transactionID, dataId, newValue)
@@ -130,18 +132,20 @@ class TransactionManager:
 
       else:
         self.waitForMethod(transaction, waitForTrans)
+        transaction.requestToHandle = #assign new request
         print(transaction.transactionID, "did not get lock for", dataId, "will wait for tranasactions", waitForTrans)
 
-    def waitForMethod(self, transaction, waitForTrans):
-      if transaction.transactionID not in self.waitsFor:
-        self.waitsFor[transaction.transactionID] = {}
+  def waitForMethod(self, transaction, waitForTrans):
+    if transaction.transactionID not in self.waitsFor:
+      self.waitsFor[transaction.transactionID] = set()
 
-      for tranId in waitForTrans:
-        self.waitsFor[transaction.transactionID].add(tranId)
-        if tranId not in self.waitedBy:
-          self.waitedBy[tranId].add(transaction.transactionID)
+    for tranId in waitForTrans:
+      self.waitsFor[transaction.transactionID].add(tranId)
+      if tranId not in self.waitedBy:
+        self.waitedBy[tranId] = set()
 
-      print("Write for", writeSites, transaction.transactionID, dataId, res)
+      self.waitedBy[tranId].add(transaction.transactionID)
+
 
   def dump(self):
     for siteId in range(1, NUM_SITES+1):
@@ -153,11 +157,11 @@ class TransactionManager:
   def handleDeadlocks(self):
     print("Trying to find and handle deadlocks")
     deadlocks = [] # [(T#, T#)]
-    visited = {}
+    visited = set()
     for tranId in self.waitsFor:
-      if (transId not in visited):
-        currentlyVisiting = {}
-        detectDeadlock(transId, currentlyVisiting, visited, deadlocks)
+      if (tranId not in visited):
+        currentlyVisiting = set()
+        self.detectDeadlock(tranId, currentlyVisiting, visited, deadlocks)
 
     print("Result of finding deadlocks:", deadlocks)
 
@@ -175,22 +179,56 @@ class TransactionManager:
         elif (transId not in visited):
           self.detectDeadlock(transId, currentlyVisiting, visited, deadlocks)
 
-    currentlyVisiting.pop(currTransId)
+    currentlyVisiting.remove(currTransId)
     visited.add(currTransId)
 
+  def getTransactionsInCycleHelper(self, currTransId, destTransId, visited, currPath, res):
+    if currTransId in visited:
+      return
 
-  def transCompare(self, tranId1, tranId2):
-    if not tranId1 in transactions or not tranId2 in transactions:
-      raise Exception("Both tranIds should be in transactions list")
 
-    return transactions[tranId1].timestamp < transactions[tranId2].timestamp
+    visited.add(currTransId)
+    currPath.append(currTransId)
+
+    print("currTransId", currTransId, "destTransId", destTransId, "currPath", currPath, "visited", visited)
+
+    if currTransId == destTransId:
+      for p in currPath:
+        res.append(p)
+      return
+
+    if (currTransId in self.waitsFor):
+      for transId in self.waitsFor[currTransId]:
+        self.getTransactionsInCycleHelper(transId, destTransId, visited, currPath, res)
+
+    currPath.pop()
+
+
+
+  def getTransactionsInCycle(self, parentTransId, childTransId):
+    path = []
+    res = []
+    visited = set()
+    self.getTransactionsInCycleHelper(childTransId, parentTransId, visited, path, res)
+    print("res", res)
+    return res
+
 
   def resolveDeadlocks(self, deadlocks):
+    def transCompare(tranId1, tranId2):
+      if not tranId1 in self.transactions or not tranId2 in self.transactions:
+        raise Exception("Both tranIds should be in transactions list")
+      return self.transactions[tranId1].timestamp < self.transactions[tranId2].timestamp
+
+
     transToAbort = []
     for pair in deadlocks:
       trans = self.getTransactionsInCycle(pair[1], pair[0])
-      trans.sort(key = self.transCompare)
+      print("trans", trans)
+      #trans.sort(key = transCompare)
+      sorted(trans, key=cmp_to_key(transCompare))
       transToAbort.append(trans[0])
+      print(trans)
 
     for tId in transToAbort:
       self.endTransaction(self.transactions[tId], "Abort")
