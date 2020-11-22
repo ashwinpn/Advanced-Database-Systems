@@ -122,7 +122,7 @@ class Site:
         for dId in lockedDataIds:
             if dId not in self.data:
                 continue
-
+            print(self.siteId, transactionID, dId)
             self.lockTable[dId].transactions.remove(transactionID)
             if len(self.lockTable[dId].transactions) == 0:
                 del self.lockTable[dId]
@@ -138,17 +138,21 @@ class Site:
 
     def checkRead(self, dataId):
         if dataId not in self.data:
-            None
+            return None
         return self.data[dataId].commited != -1
 
     def fail(self):
         self.state = "FAILED"
+
 
     def recover(self):
         # make all data commited = False
         self.state = "AVAILABLE"
         for dataId, data in self.data.items():
             data.commited = -1
+
+        #self.lockTable = {}
+
 
 
 

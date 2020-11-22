@@ -1,19 +1,18 @@
-// Test 2
-// No aborts happens, since read-only transactions use
-// multiversion read protocol.
-
+// Test 3
+// T1 should not abort because its site did not fail.
+// In fact all transactions commit
+// x8 has the value 88 at every site except site 2 where it won't have
+// the correct value right away but must wait for a write to take place.
 begin(T1)
-beginRO(T2)
-W(T1,x1,101)
-R(T2,x2)
-W(T1,x2,102)
-R(T2,x1)
-end(T1)
+begin(T2)
+R(T1,x3)
+fail(2)
+W(T2,x8,88) 
+R(T2,x3)
+W(T1, x5,91)
 end(T2)
+
+recover(2)
+
+end(T1)
 dump()
-
-=== output of dump
-x1: 101 at site 2
-x2: 102 at all sites
-All other variables have their initial values.
-

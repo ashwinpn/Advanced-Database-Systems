@@ -53,11 +53,11 @@ class Database:
             if len(splitted[0]) > 0: param1 = splitted[0]
         elif len(splitted) == 2:
             if len(splitted[0]) > 0: param1 = splitted[0]
-            if len(splitted[1]) > 0: param2 = int(splitted[1][1:])
+            if len(splitted[1]) > 0: param2 = int(splitted[1].strip()[1:])
         elif len(splitted) == 3:
             if len(splitted[0]) > 0: param1 = splitted[0]
-            if len(splitted[1]) > 0: param2 = int(splitted[1][1:])
-            if len(splitted[2]) > 0: param3 = int(splitted[2])
+            if len(splitted[1]) > 0: param2 = int(splitted[1].strip()[1:])
+            if len(splitted[2]) > 0: param3 = int(splitted[2].strip())
         else:
             return None
 
