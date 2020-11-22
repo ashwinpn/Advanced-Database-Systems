@@ -1,13 +1,17 @@
-from collections import defaultdict
-from queue import Queue
+#from collections import defaultdict
+#from queue import Queue
+from site import *
 from config_params import *
 
+
+
+
 class Transaction:
-  def __init__(self, transactionID, timestamp, state):
+  def __init__(self, transactionID, timestamp):
     self.transactionID = transactionID
     self.timestamp = timestamp
     # state = {Active, Aborted, Committed}
-    self.state = state
+    self.state = "Active"
     # True for readOnly
     self.read_type = False
     self.accessedSites = []
@@ -30,7 +34,7 @@ class TransactionManager:
   # ex. b -> {a, d}, c -> {a}, d -> {a}
   waitsFor = {}
 
-  def __init__(self, sites):
+  def __init__(self):
     self.sites = {}
     for siteId in range(1, NUM_SITES+1):
         self.sites[siteId] = Site(siteId)
@@ -53,7 +57,7 @@ class TransactionManager:
 
     if (token == "Abort"):
       # token = Abort
-      for site in sites:
+      for site in self.sites:
         # Release present lock
         # Also release queued locks
         transaction.state = "Aborted"
@@ -61,10 +65,10 @@ class TransactionManager:
         # Why did it abort?
         # Deadlock
         # Site Problem
-        print("Transaction Aborted: ", transaction.transactionID)
+      print("Transaction Aborted: ", transaction.transactionID)
     else:
       #token = Commit
-      for site in sites:
+      for site in self.sites:
         for dataId in dataLocked:
           site.commit(transaction.transactionID, dataId)
 
@@ -81,7 +85,7 @@ class TransactionManager:
 
       del waitedBy[transaction.transactionID]
 
-    for site in sites:
+    for site in self.sites:
       site.releaseLocks(transaction.dataLocked)
     transaction.dataLocked = {}
 
@@ -109,21 +113,24 @@ class TransactionManager:
       print("No such transaction with id", transaction.transactionID)
       return
 
+    print(transaction.transactionID, "starting to write to", dataId, "new value", newValue)
     # Need to check site status
     # If all required sites are Available,
     # all write locks can be accessed
-    for site in sites:
-      waitForTrans = checkLock("WRITE", transaction.transactionID, dataId)
+    for site in self.sites:
+      waitForTrans = site.checkLock("WRITE", transaction.transactionID, dataId)
       if (waitForTrans is None):
         continue
 
       if len(waitForTrans) == 0:
-        lock("WRITE", transaction.transactionID, dataId)
+        site.lock("WRITE", transaction.transactionID, dataId)
         transaction.dataLocked.add(dataId)
         site.update(transaction.transactionID, dataId, newValue)
+        print(transaction.transactionID, "got the lock for", dataId, "and updated data to new value", newValue)
 
       else:
         self.waitForMethod(transaction, waitForTrans)
+        print(transaction.transactionID, "did not get lock for", dataId, "will wait for tranasactions", waitForTrans)
 
     def waitForMethod(self, transaction, waitForTrans):
       if transaction.transactionID not in self.waitsFor:
@@ -154,7 +161,7 @@ class TransactionManager:
 
     print("Result of finding deadlocks:", deadlocks)
 
-    resolveDeadlocks(deadlocks)
+    self.resolveDeadlocks(deadlocks)
 
 
   def detectDeadlock(self, currTransId, currentlyVisiting, visited, deadlocks):
@@ -178,7 +185,7 @@ class TransactionManager:
 
     return transactions[tranId1].timestamp < transactions[tranId2].timestamp
 
-  def resolveDeadlock(self, deadlocks):
+  def resolveDeadlocks(self, deadlocks):
     transToAbort = []
     for pair in deadlocks:
       trans = self.getTransactionsInCycle(pair[1], pair[0])

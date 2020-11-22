@@ -74,6 +74,10 @@ class Site:
         if dataId not in self.data:
             return
 
+        # Transaction has already got same type of lock on this data
+        if dataId in self.lockTable[dataId] and lockType == self.lockTable[dataId].lockType and transactionID in self.lockTable[dataId]:
+            return
+
         # dataId has to be in self.data and we are adding copy of the data to lock table
         self.lockTable[dataId] = Lock(lockType, transactionID, self.data[dataId].copy())
 

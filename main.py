@@ -1,8 +1,6 @@
 #!/bin/python
 import argparse
 from transaction_manager import *
-from data_manager import *
-
 
 class Request:
     requestType = None
@@ -23,11 +21,9 @@ class Database:
     time_tick = 0
 
     TM = None
-    DM = None
 
     def __init__(self):
-        self.DM = DataManager()
-        self.TM = TransactionManager(self.DM.sites)
+        self.TM = TransactionManager()
 
     def listenAndHandleRequests(self, file_path):
         if file_path is None or len(file_path) == 0:
@@ -82,7 +78,7 @@ class Database:
         requestType, param1, param2, param3 = request.flatten()
         print("-------- Handling request", request.requestType, request.param1, request.param2, request.param3)
 
-        TM.handleDeadlocks()
+        self.TM.handleDeadlocks()
 
         self.time_tick += 1
         if requestType == "begin":
