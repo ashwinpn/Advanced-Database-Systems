@@ -121,7 +121,7 @@ class TransactionManager:
 
     transaction.lockedSites = set()
 
-    #print("self.transactions", self.transactions, "self.waitsFor", self.waitsFor)
+    print("transaction.waitedBy", transaction.waitedBy)
     for waitingTransactionID in transaction.waitedBy:
       if waitingTransactionID in self.transactions:
         request = self.transactions[waitingTransactionID].requestToHandle
@@ -159,27 +159,32 @@ class TransactionManager:
       print("No such transaction with id", transaction.transactionID)
       return
 
+    print("read", "transactionID", transaction.transactionID, "dataId", dataId)
+
     for siteId, site in self.sites.items():
       if (site.state != "AVAILABLE"):
         continue
 
       if (site.checkRead(dataId) == True):
+        print("Trying to get READ lock on dataId", dataId, "in siteId", siteId)
         # Try to get the lock
         waitForTrans = site.checkLock("READ", transaction.transactionID, dataId)
+        print("waitForTrans", waitForTrans)
         # Data is not present in site, so move on - not a failure to lock
         if (waitForTrans is None):
           continue
 
         if len(waitForTrans) == 0:
-          #print("+++ Got READ lock for site", siteId)
+          print("+++ Got READ lock for site", siteId)
           site.lock("READ", transaction.transactionID, dataId)
           #print(transaction.transactionID, "got the read lock for", dataId)
           d = site.getData(dataId)
           transaction.lockedSites.add((siteId, dataId, main.time_tick))
           print(transaction.transactionID,"R",d.toString())
         else:
+          print("Didnt get read lock")
           self.waitForMethod(transaction, waitForTrans)
-          transaction.requestToHandle = Request("R", transaction.transactionID, dataId, newValue)
+          transaction.requestToHandle = Request("R", transaction.transactionID, dataId, None)
           print(transaction.transactionID, "did not get read lock for", dataId, "will wait for tranasactions", waitForTrans)
         break
 

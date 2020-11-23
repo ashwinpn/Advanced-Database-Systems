@@ -84,11 +84,14 @@ class Site:
             trans.discard(transactionID)
             return trans
         elif (lockType == "READ"):
-            if (presentLock == "WRITE"):
+            print("lockType, transactionID, dataId", lockType, transactionID, dataId)
+            print("presentLock.lockType", presentLock.lockType)
+            if (presentLock.lockType == "WRITE"):
+
                 trans = presentLock.transactions.copy()
                 trans.discard(transactionID)
                 return trans
-            elif (presentLock == "READ"):
+            elif (presentLock.lockType == "READ"):
                 return set()
 
 
