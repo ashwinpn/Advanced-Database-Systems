@@ -70,7 +70,8 @@ class TransactionManager:
     print("transaction.lockedSites", transaction.lockedSites)
     for siteId, dataId, time in transaction.lockedSites:
       site = self.sites[siteId]
-      if site.state != "AVAILABLE" or transaction.timestamp < site.failTimes[-1]:
+      if site.state != "AVAILABLE" or time < site.failTimes[-1]:
+        print("Reason for abortion for siteId", siteId, "site.state", site.state, "transaction.timestamp", transaction.timestamp, "site.failTimes[-1]", site.failTimes[-1])
         allLockedSitesAreAvailable = False
         break
 
