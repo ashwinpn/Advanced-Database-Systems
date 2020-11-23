@@ -217,7 +217,7 @@ class TransactionManager:
         self.waitForMethod(transaction, waitForTrans)
         transaction.requestToHandle = Request("W", transaction.transactionID, dataId, newValue)
         lockedAllAvailableSites = False
-        #print(transaction.transactionID, "did not get lock for", dataId, "will wait for tranasactions", waitForTrans)
+        print(transaction.transactionID, "did not get write lock for", dataId, "will wait for tranasactions", waitForTrans)
 
     # If we couldnt get all locks for available sites release others
     if lockedAllAvailableSites == False:
