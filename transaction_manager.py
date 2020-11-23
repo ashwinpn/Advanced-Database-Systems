@@ -13,7 +13,7 @@ class Transaction:
     self.state = "Active"
     # True for readOnly
     self.read_type = False
-    self.writeLockedSites = set()
+    self.lockedSites = set()
     self.requestToHandle = None
     self.waitedBy = []
     self.isReadOnly = isReadOnly
@@ -67,14 +67,19 @@ class TransactionManager:
       return
 
     allLockedSitesAreAvailable = True
-    for siteId, dataId in transaction.writeLockedSites:
-      if self.sites[siteId].state != "AVAILABLE":
+    print("transaction.lockedSites", transaction.lockedSites)
+    for siteId, dataId, time in transaction.lockedSites:
+      site = self.sites[siteId]
+      if site.state != "AVAILABLE" or transaction.timestamp < site.failTimes[-1]:
         allLockedSitesAreAvailable = False
         break
 
+
     # Abort transaction if T can not commit to all the sites which T locked
-    if (not allLockedSitesAreAvailable):
+    if allLockedSitesAreAvailable == False:
       token = "Abort"
+
+    print("allLockedSitesAreAvailable", allLockedSitesAreAvailable, "token", token)
 
 
     if (token == "Abort"):
@@ -84,7 +89,7 @@ class TransactionManager:
       print("!!!!!!!!!!!!!!!!!!!   Transaction Aborted: ", transaction.transactionID)
     else:
       #token = Commit
-      for siteId, dataId in transaction.writeLockedSites:
+      for siteId, dataId, time in transaction.lockedSites:
         site = self.sites[siteId]
         site.commit(transaction.transactionID, dataId)
 
@@ -109,11 +114,11 @@ class TransactionManager:
       del self.waitsFor[transaction.transactionID]
 
 
-    for siteId, dataId in transaction.writeLockedSites:
+    for siteId, dataId, time in transaction.lockedSites:
       site = self.sites[siteId]
       site.releaseLocks(transaction.transactionID, [dataId])
 
-    transaction.writeLockedSites = set()
+    transaction.lockedSites = set()
 
     #print("self.transactions", self.transactions, "self.waitsFor", self.waitsFor)
     for waitingTransactionID in transaction.waitedBy:
@@ -165,11 +170,12 @@ class TransactionManager:
           continue
 
         if len(waitForTrans) == 0:
-          print("+++ Got READ lock for site", siteId)
+          #print("+++ Got READ lock for site", siteId)
           site.lock("READ", transaction.transactionID, dataId)
-          print(transaction.transactionID, "got the read lock for", dataId)
+          #print(transaction.transactionID, "got the read lock for", dataId)
           d = site.getData(dataId)
-          print(d.toString())
+          transaction.lockedSites.add((siteId, dataId, main.time_tick))
+          #print(d.toString())
         else:
           self.waitForMethod(transaction, waitForTrans)
           transaction.requestToHandle = Request("R", transaction.transactionID, dataId, newValue)
@@ -222,7 +228,7 @@ class TransactionManager:
     else:
       print("Got locks for all available sites for T", transaction.transactionID, "for dataId", dataId)
       for siteId in soFarLockedSites:
-        transaction.writeLockedSites.add((siteId, dataId))
+        transaction.lockedSites.add((siteId, dataId, main.time_tick))
         site = self.sites[siteId]
         site.update(transaction.transactionID, dataId, newValue)
 

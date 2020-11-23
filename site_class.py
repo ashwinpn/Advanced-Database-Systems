@@ -37,6 +37,8 @@ class Site:
     oldCommitedCopies = {}
 
     def __init__(self, siteId):
+        self.failTimes = [-1]
+
         # enum states {AVAILABLE, FAILED}
         self.state = "AVAILABLE"
 
@@ -125,10 +127,8 @@ class Site:
                 print(transactionID, "tries to commit a data", dataId, "which it does not lock access at all")
             else:
                 self.data[dataId] = lock.dataInMemory
-                print(",,,,,, COMMITING WITH TIMESTAMP", main.time_tick, "with VALUE", self.data[dataId].value, "for dataId", dataId)
+                print(",,,,,, COMMITING WITH TIMESTAMP", main.time_tick, "with VALUE", self.data[dataId].value, "for dataId", dataId, "for site", self.siteId)
                 self.oldCommitedCopies[dataId].append((main.time_tick, self.data[dataId].copy()))
-                for tt, dd in self.oldCommitedCopies[dataId]:
-                    print("->>>> time", tt,"data", dd.toString())
 
 
     def releaseLocks(self, transactionID, lockedDataIds):
@@ -185,13 +185,14 @@ class Site:
 
     def fail(self):
         self.state = "FAILED"
+        self.failTimes.append(main.time_tick)
 
 
     def recover(self):
         # make all data commited = False
         self.state = "AVAILABLE"
         for dataId, data in self.data.items():
-            data.oldCopies.append((-1, None))
+            self.oldCommitedCopies[dataId].append((-1, None))
 
         #self.lockTable = {}
 
