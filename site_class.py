@@ -1,12 +1,15 @@
 from config_params import *
-from main import *
+from util import *
+from transaction_manager import *
+
+import main
 
 class Data:
     def __init__(self, dataId, value, oldCommitedCopies):
         self.dataId = dataId
         self.name = "x"+str(dataId)
         self.value = value
-        self.commited = time_tick
+        self.commited = main.time_tick
 
     def __init__(self, dataId, value):
         self.dataId = dataId
@@ -50,10 +53,10 @@ class Site:
                 # x1 -> site 2, x3 -> site 4, x11 -> site 2, x15 -> site 6, etc.
                 if 1 + (dataId % NUM_SITES) == siteId:
                     self.data[dataId] = Data(dataId, 10 * dataId)
-                    self.oldCommitedCopies[dataId] = [(time_tick, self.data[dataId])]
+                    self.oldCommitedCopies[dataId] = [(main.time_tick, self.data[dataId])]
             else:
                 self.data[dataId] = Data(dataId, 10 * dataId)
-                self.oldCommitedCopies[dataId] = [(time_tick, self.data[dataId])]
+                self.oldCommitedCopies[dataId] = [(main.time_tick, self.data[dataId])]
 
     def flattenData(self):
         res = []
@@ -109,7 +112,6 @@ class Site:
         self.lockTable[dataId].dataInMemory.value = newValue
 
     def commit(self, transactionID, dataId):
-        global time_tick
         if dataId not in self.data:
             return
 
@@ -122,9 +124,11 @@ class Site:
             if transactionID not in lock.transactions:
                 print(transactionID, "tries to commit a data", dataId, "which it does not lock access at all")
             else:
-                self.data[dataId].value = lock.dataInMemory.value
-                print("COMMITING WITH TIMESTAMP", time_tick, "with VALUE", self.data[dataId].value)
-                self.oldCommitedCopies[dataId].append((time_tick, self.data[dataId]))
+                self.data[dataId] = lock.dataInMemory
+                print(",,,,,, COMMITING WITH TIMESTAMP", main.time_tick, "with VALUE", self.data[dataId].value, "for dataId", dataId)
+                self.oldCommitedCopies[dataId].append((main.time_tick, self.data[dataId].copy()))
+                for tt, dd in self.oldCommitedCopies[dataId]:
+                    print("->>>> time", tt,"data", dd.toString())
 
 
     def releaseLocks(self, transactionID, lockedDataIds):

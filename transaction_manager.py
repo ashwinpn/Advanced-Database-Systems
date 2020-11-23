@@ -1,8 +1,9 @@
 from config_params import *
 from site_class import *
-from main import *
 from util import *
 from functools import cmp_to_key
+
+import main
 
 class Transaction:
   def __init__(self, transactionID, timestamp, isReadOnly):
@@ -318,7 +319,6 @@ class TransactionManager:
       self.endTransaction(self.transactions[tId], "Abort")
 
   def handleRequest(self, request):
-    global time_tick
     # None has been passed as request
     if not request:
       return
@@ -328,13 +328,13 @@ class TransactionManager:
 
     self.handleDeadlocks()
 
-    time_tick += 1
-    print("time_tick", time_tick)
+    main.time_tick += 1
+    print("main.time_tick", main.time_tick)
     if requestType == "begin":
-      transaction = Transaction(param1, time_tick, False)
+      transaction = Transaction(param1, main.time_tick, False)
       self.startTransaction(transaction)
     elif requestType == "beginRO":
-      transaction = Transaction(param1, time_tick, True)
+      transaction = Transaction(param1, main.time_tick, True)
       self.startTransaction(transaction)
     elif requestType == "W":
       transaction = self.transactions[param1]
