@@ -135,10 +135,10 @@ class Site:
         for dId in lockedDataIds:
             if dId not in self.data:
                 continue
-            #print(self.siteId, transactionID, dId)
-            self.lockTable[dId].transactions.remove(transactionID)
-            if len(self.lockTable[dId].transactions) == 0:
-                del self.lockTable[dId]
+            if dId in self.lockTable:
+                self.lockTable[dId].transactions.discard(transactionID)
+                if len(self.lockTable[dId].transactions) == 0:
+                    del self.lockTable[dId]
 
     def checkReadOnly(self, dataId, transTimestemp):
         if dataId not in self.data:
