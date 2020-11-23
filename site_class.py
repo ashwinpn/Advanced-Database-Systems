@@ -194,7 +194,7 @@ class Site:
         for dataId, data in self.data.items():
             self.oldCommitedCopies[dataId].append((-1, None))
 
-        #self.lockTable = {}
+        self.lockTable = {}
 
 
 
