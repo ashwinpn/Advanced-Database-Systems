@@ -84,10 +84,7 @@ class Site:
             trans.discard(transactionID)
             return trans
         elif (lockType == "READ"):
-            print("lockType, transactionID, dataId", lockType, transactionID, dataId)
-            print("presentLock.lockType", presentLock.lockType)
             if (presentLock.lockType == "WRITE"):
-
                 trans = presentLock.transactions.copy()
                 trans.discard(transactionID)
                 return trans
@@ -130,7 +127,7 @@ class Site:
                 print(transactionID, "tries to commit a data", dataId, "which it does not lock access at all")
             else:
                 self.data[dataId] = lock.dataInMemory
-                print(",,,,,, COMMITING WITH TIMESTAMP", main.time_tick, "with VALUE", self.data[dataId].value, "for dataId", dataId, "for site", self.siteId)
+                if(main.debug): print("transactionID", transactionID, "committing with timestamp", main.time_tick, "with value", self.data[dataId].value, "for dataId", dataId, "for site", self.siteId)
                 self.oldCommitedCopies[dataId].append((main.time_tick, self.data[dataId].copy()))
 
 
@@ -160,12 +157,11 @@ class Site:
         if dataId not in self.data:
             return None
 
-        print("READ_ONLY: ", self.oldCommitedCopies[dataId])
+        if(main.debug): print("getDataReadOnly() -> self.oldCommitedCopies[dataId]", self.oldCommitedCopies[dataId])
 
         for oldCopy in self.oldCommitedCopies[dataId][::-1]:
 
             commitTime = oldCopy[0]
-            print("transTimestemp", transTimestemp, "commitTime", commitTime, oldCopy[1].toString())
             if commitTime == -1:
                 return None
             if commitTime < transTimestemp:

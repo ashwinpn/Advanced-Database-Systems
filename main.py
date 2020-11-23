@@ -4,6 +4,8 @@ from transaction_manager import *
 
 time_tick = 0
 
+debug = False
+
 class Database:
 
     TM = None
@@ -68,10 +70,13 @@ class Database:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--test', help='test input source', default='')
+    parser.add_argument('--debug', help='test input source', default='False')
     args = parser.parse_args()
 
 
     test_source = args.test
+    debug = args.debug == "True"
+
     DB = Database()
     DB.listenAndHandleRequests(test_source)
 
