@@ -175,7 +175,7 @@ class TransactionManager:
           #print(transaction.transactionID, "got the read lock for", dataId)
           d = site.getData(dataId)
           transaction.lockedSites.add((siteId, dataId, main.time_tick))
-          #print(d.toString())
+          print(transaction.transactionID,"R",d.toString())
         else:
           self.waitForMethod(transaction, waitForTrans)
           transaction.requestToHandle = Request("R", transaction.transactionID, dataId, newValue)
