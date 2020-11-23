@@ -129,6 +129,16 @@ class TransactionManager:
 
     transaction.waitedBy = []
 
+
+    # Transaction just finished so it is not waiting for other transactions anymore
+    for tId, trans in self.transactions.items():
+      if tId == transaction.transactionID:
+        continue
+
+      if transaction.transactionID in trans.waitedBy:
+        trans.waitedBy.remove(transaction.transactionID)
+
+
   def readOnly(self, transaction, dataId):
     if not self.transactions[transaction.transactionID]:
       print("No such transaction with id", transaction.transactionID)
@@ -165,6 +175,8 @@ class TransactionManager:
       if (site.state != "AVAILABLE"):
         continue
 
+      print("Read from site", siteId)
+
       if (site.checkRead(dataId) == True):
         print("Trying to get READ lock on dataId", dataId, "in siteId", siteId)
         # Try to get the lock
@@ -180,7 +192,7 @@ class TransactionManager:
           #print(transaction.transactionID, "got the read lock for", dataId)
           d = site.getData(dataId)
           transaction.lockedSites.add((siteId, dataId, main.time_tick))
-          print(transaction.transactionID,"R",d.toString())
+          print(transaction.transactionID,"R",d.toString(), "from siteId", siteId)
         else:
           print("Didnt get read lock")
           self.waitForMethod(transaction, waitForTrans)
