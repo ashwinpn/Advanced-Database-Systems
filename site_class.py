@@ -70,7 +70,6 @@ class Site:
 
     # returns set of transactionIds must be waited for
     def checkLock(self, lockType, transactionID, dataId):
-        #print(dataId, self.data)
         if dataId not in self.data:
             return None
 
@@ -127,7 +126,6 @@ class Site:
                 print(transactionID, "tries to commit a data", dataId, "which it does not lock access at all")
             else:
                 self.data[dataId] = lock.dataInMemory
-                if(main.debug): print("transactionID", transactionID, "committing with timestamp", main.time_tick, "with value", self.data[dataId].value, "for dataId", dataId, "for site", self.siteId)
                 self.oldCommitedCopies[dataId].append((main.time_tick, self.data[dataId].copy()))
 
 
@@ -156,8 +154,6 @@ class Site:
     def getDataReadOnly(self, dataId, transTimestemp):
         if dataId not in self.data:
             return None
-
-        if(main.debug): print("getDataReadOnly() -> self.oldCommitedCopies[dataId]", self.oldCommitedCopies[dataId])
 
         for oldCopy in self.oldCommitedCopies[dataId][::-1]:
 
