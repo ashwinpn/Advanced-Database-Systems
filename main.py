@@ -4,14 +4,12 @@ from transaction_manager import *
 
 time_tick = 0
 
-debug = False
 
 class Database:
 
     TM = None
 
-    def __init__(self):
-        global debug
+    def __init__(self, debug):
         self.TM = TransactionManager(debug)
 
     def listenAndHandleRequests(self, file_path):
@@ -78,7 +76,7 @@ if __name__ == '__main__':
     test_source = args.test
     debug = args.debug == "True"
 
-    DB = Database()
+    DB = Database(debug)
     DB.listenAndHandleRequests(test_source)
 
 

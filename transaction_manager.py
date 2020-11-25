@@ -7,12 +7,11 @@ import main
 
 class Transaction:
   def __init__(self, transactionID, timestamp, isReadOnly):
-    self.transactionID = transactionID
-    self.timestamp = timestamp
     # state = {Active, Aborted, Committed}
     self.state = "Active"
-    # True for readOnly
-    self.read_type = False
+
+    self.transactionID = transactionID
+    self.timestamp = timestamp
     self.lockedSites = set()
     self.requestToHandle = None
     self.waitedBy = []
@@ -34,8 +33,9 @@ class Request:
 
 class TransactionManager:
 
-  # Collect the transactionID, transactions, timestamp
+  # Collect transactions
   transactions = {}
+
   sites = {}
 
   # transactionId -> {transactionIds}
@@ -72,7 +72,7 @@ class TransactionManager:
     if(self.debug): print("transaction.lockedSites", transaction.lockedSites)
 
     allLockedSitesAreAvailable = True
-    for siteId, dataId, time in transaction.lockedSites:
+    for siteId, dataId, time, lockType in transaction.lockedSites:
       site = self.sites[siteId]
       if site.state != "AVAILABLE" or time < site.failTimes[-1]:
         print("Reason for abortion for siteId", siteId, "site.state", site.state, "transaction.timestamp", transaction.timestamp, "site.failTimes[-1]", site.failTimes[-1])
@@ -94,16 +94,17 @@ class TransactionManager:
       print(transaction.transactionID, "aborts")
     else:
       #token = Commit
-      for siteId, dataId, time in transaction.lockedSites:
-        site = self.sites[siteId]
-        site.commit(transaction.transactionID, dataId)
+      for siteId, dataId, time, lockType in transaction.lockedSites:
+        if (lockType == "W"):
+          site = self.sites[siteId]
+          site.commit(transaction.transactionID, dataId)
 
       transaction.state = "Committed"
       self.transactions.pop(transaction.transactionID)
       print(transaction.transactionID, "commits")
 
 
-    #Do cleanups
+    # Do cleanups related to the transaction
     transactionsNotWaitingForAnyone = set()
     # Remove from waits-for graph
     for waitingTransId, transIds in self.waitsFor.items():
@@ -119,7 +120,7 @@ class TransactionManager:
       del self.waitsFor[transaction.transactionID]
 
 
-    for siteId, dataId, time in transaction.lockedSites:
+    for siteId, dataId, time, lockType in transaction.lockedSites:
       site = self.sites[siteId]
       site.releaseLocks(transaction.transactionID, [dataId])
 
@@ -157,16 +158,18 @@ class TransactionManager:
     if (not isDataReplicated(dataId)) and len(sitesHoldingData) == 1:
       site = sitesHoldingData[0]
       d = site.getDataReadOnly(dataId, transaction.timestamp)
-      print(d.toString())
+      print(transaction.transactionID, d.toString())
       return
     elif (isDataReplicated(dataId) and len(sitesHoldingData) > 1):
       for site in sitesHoldingData:
         if site.checkReadOnly(dataId, transaction.timestamp):
           d = site.getDataReadOnly(dataId, transaction.timestamp)
-          print(d.toString())
+          print(transaction.transactionID, d.toString())
           return
 
     if(self.debug): print(transaction.transactionID, "could not find any valid copy to READ_ONLY for data", dataId)
+
+    self.endTransaction(transaction, "Abort")
 
   def read(self, transaction, dataId):
     if not self.transactions[transaction.transactionID]:
@@ -175,6 +178,7 @@ class TransactionManager:
 
     if(self.debug): print("Trying to read", "transactionID", transaction.transactionID, "dataId", dataId)
 
+    result = "Looking"
     for siteId, site in self.sites.items():
       if (site.state != "AVAILABLE"):
         continue
@@ -188,18 +192,24 @@ class TransactionManager:
           continue
 
         if len(waitForTrans) == 0:
-          if(self.debug): print("+++ Got READ lock for site", siteId)
+          if(self.debug): print("Got READ lock for site", siteId)
           site.lock("READ", transaction.transactionID, dataId)
           if(self.debug): print(transaction.transactionID, "got the read lock for", dataId)
           d = site.getData(dataId)
-          transaction.lockedSites.add((siteId, dataId, main.time_tick))
-          print(d.toString())
+          transaction.lockedSites.add((siteId, dataId, main.time_tick, "R"))
+          print(transaction.transactionID, d.toString())
+          result = "Found"
         else:
           if(self.debug): print("Didnt get read lock")
           self.waitForMethod(transaction, waitForTrans)
           transaction.requestToHandle = Request("R", transaction.transactionID, dataId, None)
           if(self.debug): print(transaction.transactionID, "did not get read lock for", dataId, "will wait for tranasactions", waitForTrans)
+          result = "Waiting"
         break
+
+    if (result == "Looking"):
+      if(self.debug): print(transaction.transactionID, "could not find any valid copy to READ for data", dataId)
+      self.endTransaction(transaction, "Abort")
 
   def write(self, transaction, dataId, newValue):
     if not self.transactions[transaction.transactionID]:
@@ -242,7 +252,7 @@ class TransactionManager:
     else:
       if(self.debug): print("Got locks for all available sites for T", transaction.transactionID, "for dataId", dataId)
       for siteId in soFarLockedSites:
-        transaction.lockedSites.add((siteId, dataId, main.time_tick))
+        transaction.lockedSites.add((siteId, dataId, main.time_tick, "W"))
         site = self.sites[siteId]
         site.update(transaction.transactionID, dataId, newValue)
 
@@ -312,7 +322,7 @@ class TransactionManager:
     res = []
     visited = set()
     self.getTransactionsInCycleHelper(childTransId, parentTransId, visited, path, res)
-    if(main.debug): print("Transactions in cycle", res)
+    if(self.debug): print("Transactions in cycle", res)
     return res
 
   def sortTransByAge(self, trans):
@@ -330,7 +340,7 @@ class TransactionManager:
       trans = self.sortTransByAge(trans)
       transToAbort.append(trans[0])
 
-    if(main.debug): print("Resolved Deadlock by aborting following transactions", transToAbort)
+    if(self.debug): print("Resolved Deadlock by aborting following transactions", transToAbort)
     for tId in transToAbort:
       self.endTransaction(self.transactions[tId], "Abort")
 
@@ -340,7 +350,7 @@ class TransactionManager:
       return
 
     requestType, param1, param2, param3 = request.flatten()
-    if(self.debug): print("-------- Handling request --------", request.requestType, request.param1, request.param2, request.param3)
+    print("Handling request:", request.requestType, request.param1, request.param2, request.param3)
 
     self.handleDeadlocks()
 
