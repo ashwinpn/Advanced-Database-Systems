@@ -33,8 +33,6 @@ class Lock:
         self.dataInMemory = data
 
 class Site:
-    # timestamp -> value
-    oldCommitedCopies = {}
 
     def __init__(self, siteId):
         self.failTimes = [-1]
@@ -50,6 +48,10 @@ class Site:
 
         # Hash map dataId -> Data
         self.data = {}
+
+        # timestamp -> value
+        self.oldCommitedCopies = {}
+
         for dataId in range(1, NUM_DATA+1):
             if (dataId % 2 != 0):
                 # x1 -> site 2, x3 -> site 4, x11 -> site 2, x15 -> site 6, etc.
@@ -168,9 +170,14 @@ class Site:
     def checkDataExists(self, dataId):
         return dataId in self.data
 
-    def checkRead(self, dataId):
+    def checkReadAllowed(self, dataId, isDataReplicated):
+
         if dataId not in self.data:
             return None
+
+        if isDataReplicated == False:
+            return True
+
         return self.oldCommitedCopies[dataId][-1][0] != -1
 
     def getData(self, dataId):

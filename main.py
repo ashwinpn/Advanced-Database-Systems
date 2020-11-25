@@ -30,7 +30,6 @@ class Database:
         if (line == "\n"):
             time_tick += 1
 
-        #print(line)
         splitted = line.split(")")
         if (len(splitted) != 2):
             return None

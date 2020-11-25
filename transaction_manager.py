@@ -65,7 +65,7 @@ class TransactionManager:
   def endTransaction(self, transaction, token):
     print("Ending Transaction", transaction.transactionID)
     # token [whether to commit / abort] determined by the transaction status
-    if not self.transactions[transaction.transactionID]:
+    if transaction.transactionID not in self.transactions:
       print("No such transaction ", transaction.transactionID)
       return
 
@@ -183,7 +183,9 @@ class TransactionManager:
       if (site.state != "AVAILABLE"):
         continue
 
-      if (site.checkRead(dataId) == True):
+      if(self.debug): print("Trying to check if data is available for dataId", dataId, "in siteId", siteId)
+
+      if (site.checkReadAllowed(dataId, isDataReplicated(dataId)) == True):
         if(self.debug): print("Trying to get READ lock on dataId", dataId, "in siteId", siteId)
         # Try to get the lock
         waitForTrans = site.checkLock("READ", transaction.transactionID, dataId)
@@ -233,7 +235,7 @@ class TransactionManager:
         continue
 
       if len(waitForTrans) == 0:
-        if(self.debug): print("+++ Got the Write lock for site", siteId)
+        if(self.debug): print("Got the Write lock for site", siteId)
         site.lock("WRITE", transaction.transactionID, dataId)
         soFarLockedSites.append(siteId)
         if(self.debug): print(transaction.transactionID, "got the lock for", dataId, "and updated data to new value", newValue)
@@ -242,15 +244,16 @@ class TransactionManager:
         transaction.requestToHandle = Request("W", transaction.transactionID, dataId, newValue)
         lockedAllAvailableSites = False
         if(self.debug): print(transaction.transactionID, "did not get write lock for", dataId, "will wait for tranasactions", waitForTrans)
+        break
 
     # If we couldnt get all locks for available sites release others
     if lockedAllAvailableSites == False:
-      if(self.debug): print("Did not get locks for all available sites for T", transaction.transactionID, "for dataId", dataId)
+      if(self.debug): print("--- Did not get locks for all available sites for T", transaction.transactionID, "for dataId", dataId)
       for siteId in soFarLockedSites:
         site = self.sites[siteId]
         site.releaseLocks(transaction.transactionID, [dataId])
     else:
-      if(self.debug): print("Got locks for all available sites for T", transaction.transactionID, "for dataId", dataId)
+      if(self.debug): print("+++ Got locks for all available sites for T", transaction.transactionID, "for dataId", dataId)
       for siteId in soFarLockedSites:
         transaction.lockedSites.add((siteId, dataId, main.time_tick, "W"))
         site = self.sites[siteId]
@@ -374,6 +377,9 @@ class TransactionManager:
       else:
         self.read(transaction, param2)
     elif requestType == "end":
+      if param1 not in self.transactions:
+        print("No such transaction", param1)
+        return
       transaction = self.transactions[param1]
       self.endTransaction(transaction, "Commit")
     elif requestType == "fail":
