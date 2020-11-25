@@ -1,4 +1,19 @@
 #!/bin/python
+
+
+#######################################
+#
+#
+#     Advanced Database Systems
+#          Final Project
+#
+#     Sanjar Ahmadov [sa5640]
+#     Ashwin Prakash Nalwade [apn308]
+#
+#
+#######################################
+
+
 import argparse
 from transaction_manager import *
 
