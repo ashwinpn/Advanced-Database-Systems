@@ -90,8 +90,12 @@ if __name__ == '__main__':
     test_source = args.test
     debug = args.debug == "True"
 
+    print("Running", test_source)
     DB = Database(debug)
     DB.listenAndHandleRequests(test_source)
+    print("Done with", test_source)
+    print("")
+    print("")
 
 
 
