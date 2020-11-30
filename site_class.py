@@ -81,6 +81,7 @@ class Site:
         presentLock = self.lockTable[dataId]
 
         if (lockType == "WRITE"):
+            print(lockType, presentLock.transactions)
             trans = presentLock.transactions.copy()
             trans.discard(transactionID)
             return trans

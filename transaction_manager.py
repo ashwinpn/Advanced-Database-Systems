@@ -235,10 +235,9 @@ class TransactionManager:
         continue
 
       if len(waitForTrans) == 0:
-        if(self.debug): print("Got the Write lock for site", siteId)
         site.lock("WRITE", transaction.transactionID, dataId)
         soFarLockedSites.append(siteId)
-        if(self.debug): print(transaction.transactionID, "got the lock for", dataId, "and updated data to new value", newValue)
+        if(self.debug): print(transaction.transactionID, "got the Write lock for site", siteId, "to update data", dataId)
       else:
         self.waitForMethod(transaction, waitForTrans)
         transaction.requestToHandle = Request("W", transaction.transactionID, dataId, newValue)
@@ -248,12 +247,12 @@ class TransactionManager:
 
     # If we couldnt get all locks for available sites release others
     if lockedAllAvailableSites == False:
-      if(self.debug): print("--- Did not get locks for all available sites for T", transaction.transactionID, "for dataId", dataId)
+      if(self.debug): print("Did not get locks for all available sites for", transaction.transactionID, "for dataId", dataId)
       for siteId in soFarLockedSites:
         site = self.sites[siteId]
         site.releaseLocks(transaction.transactionID, [dataId])
     else:
-      if(self.debug): print("+++ Got locks for all available sites for T", transaction.transactionID, "for dataId", dataId)
+      if(self.debug): print("Got locks for all available sites for", transaction.transactionID, "for dataId", dataId)
       for siteId in soFarLockedSites:
         transaction.lockedSites.add((siteId, dataId, main.time_tick, "W"))
         site = self.sites[siteId]
