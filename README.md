@@ -1,6 +1,9 @@
 # Advanced-Database-Systems
 
-Replicated Concurrency and Control Project. 
+Replicated Concurrency Control and recovery Project.
+
+We implement a distributed database, complete with multiversion concurrency control, deadlock detection, replication, and failure recovery.
+
 
 ## Run Experiments
  - Running the code on a test case (say, test1.txt)
