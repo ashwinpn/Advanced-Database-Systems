@@ -72,3 +72,27 @@ $ reprounzip docker setup my_experiment.rpz mytemplate
 $ reprounzip docker run mytemplate
 ```
 ![Terminal](https://github.com/ashwinpn/Advanced-Database-Systems/blob/main/resources/db1.JPG)
+
+## Running with Vagrant
+First, install the plugin reprounzip-vagrant.
+```bash
+$ pip install reprounzip-vagrant
+```
+Note that (i) you must install reprounzip first, and (ii) the plugin requires having Vagrant
+installed. Then, use the prefix reprounzip vagrant to create and start a virtual machine
+under the directory mytemplate:
+```bash
+$ reprounzip vagrant setup my_experiment.rpz mytemplate
+```
+
+To execute the experiment, simply run:
+```bash
+$ reprounzip vagrant run mytemplate
+```
+
+- We also ran it on Windows with vagrant and Oracle Virtual Box (Use <b>vagrant up</b> and
+<b>vagrant ssh</b> to boot it up). You can find the vagrantfile and other files within the
+Vagrant_DB folder.
+
+![Terminal](https://github.com/ashwinpn/Advanced-Database-Systems/blob/main/resources/data1.JPG)
+![Terminal](https://github.com/ashwinpn/Advanced-Database-Systems/blob/main/resources/data2.JPG)
