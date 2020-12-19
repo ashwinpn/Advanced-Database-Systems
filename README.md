@@ -1,6 +1,6 @@
 # Advanced-Database-Systems
 
-Replicated Concurrency Control and recovery Project.
+<ins>Replicated Concurrency Control and recovery project.</ins>
 
 We implement a distributed database, complete with multiversion concurrency control, deadlock detection, replication, and failure recovery.
 
