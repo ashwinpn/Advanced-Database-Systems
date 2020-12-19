@@ -60,7 +60,7 @@ reprozip trace python main.py --test <file_name>.txt
 ```bash
 reprozip pack my_experiment.rpz
 ```
-## Running
+## Running the project
 - With reprounzip
 ```bash
 $ reprounzip directory setup my_experiment.rpz mydirectory
@@ -96,3 +96,13 @@ Vagrant_DB folder.
 
 ![Terminal](https://github.com/ashwinpn/Advanced-Database-Systems/blob/main/resources/data1.JPG)
 ![Terminal](https://github.com/ashwinpn/Advanced-Database-Systems/blob/main/resources/data2.JPG)
+
+## Theory
+-  Use the available copies approach to replication using strict two phase locking (using read and write locks) at each site and validation at commit time.
+-  Detect deadlocks using cycle detection and abort the youngest transaction in the cycle. The system keeps track of the transaction time of any transaction holding a lock.
+-  Read-only transactions use multiversion read consistency.
+-  The system consists of two parts: a single transaction manager that translates read and write requests on variables to read and write requests on copies using the available copy algorithm described in the notes [CSCI-GA-2434]. The transaction manager never fails. 
+- If a transaction T accesses an item (really accesses it, not just request
+a lock) at a site and the site then fails, then T continues to execute
+and then aborts only at its commit time (unless T is aborted earlier due to
+deadlock).
