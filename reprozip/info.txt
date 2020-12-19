@@ -1,0 +1,3 @@
+ReproZip can automatically pack your research along with all necessary data files, libraries, environment variables and options into a self-contained bundle. 
+Then ReproZip can use that bundle to automatically set up the same original environment so anybody can reproduce the research on a different machine, 
+without tracking down and installing the dependencies, or even having to run the same operating system!
