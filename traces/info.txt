@@ -1,0 +1,3 @@
+Saved reprozip traces.
+Obtained by running "reprozip trace python main.py --test <file_name>.txt"
+[When they ask you if you want to append to the trace, reply with ‘a’]
