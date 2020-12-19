@@ -101,7 +101,8 @@ Vagrant_DB folder.
 -  Use the available copies approach to replication using strict two phase locking (using read and write locks) at each site and validation at commit time.
 -  Detect deadlocks using cycle detection and abort the youngest transaction in the cycle. The system keeps track of the transaction time of any transaction holding a lock.
 -  Read-only transactions use multiversion read consistency.
--  The system consists of two parts: a single transaction manager that translates read and write requests on variables to read and write requests on copies using the available copy algorithm described in the notes [CSCI-GA-2434]. The transaction manager never fails. 
+-  The system consists of two parts: a single transaction manager that translates read and write requests on variables to read and write requests on copies using the available copy algorithm described in the notes [CSCI-GA-2434]. The transaction manager never fails. The other part is the site [or the data manager]. If a site fails and recovers, the
+data manager would decide which in-flight transactions to commit.
 - If a transaction T accesses an item (really accesses it, not just request
 a lock) at a site and the site then fails, then T continues to execute
 and then aborts only at its commit time (unless T is aborted earlier due to
