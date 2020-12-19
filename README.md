@@ -39,3 +39,34 @@ sudo dpkg --configure -a
 
 sudo apt update
 ```
+
+## Reprozip and Reproducibility
+ - After installing dependencies, install reprozip.
+ ```bash
+ pip install -U reprozip
+ ```
+ - Install reprounzip.
+```bash
+pip install -U reprounzip[all]
+```
+- To collect traces, inside the project directory, run
+```bash
+reprozip trace python main.py --test <file_name>.txt
+
+[When they ask you if you want to append to the trace, reply with ‘a’]
+```
+- Then pack
+```bash
+reprozip pack my_experiment.rpz
+```
+## Running
+- With reprounzip
+```bash
+$ reprounzip directory setup my_experiment.rpz mydirectory
+$ reprounzip directory run mydirectory
+```
+- With docker
+```bash
+$ reprounzip docker setup my_experiment.rpz mytemplate
+$ reprounzip docker run mytemplate
+```
