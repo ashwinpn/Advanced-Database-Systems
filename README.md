@@ -3,6 +3,7 @@
 <ins>Replicated Concurrency Control and recovery project.</ins>
 
 We implement a distributed database, complete with multiversion concurrency control, deadlock detection, replication, and failure recovery.
+Then, we use reprozip, docker, vagrant, and virtual machines to make our project reproducible even across different architectures for all time.
 
 
 ## Run Experiments
