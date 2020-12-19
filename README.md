@@ -71,3 +71,4 @@ $ reprounzip directory run mydirectory
 $ reprounzip docker setup my_experiment.rpz mytemplate
 $ reprounzip docker run mytemplate
 ```
+![Terminal](https://github.com/ashwinpn/Advanced-Database-Systems/blob/main/resources/db1.JPG)
