@@ -110,4 +110,4 @@ deadlock).
 
 ## System Design
 
-
+![](https://github.com/ashwinpn/Advanced-Database-Systems/blob/main/resources/uml.png)
