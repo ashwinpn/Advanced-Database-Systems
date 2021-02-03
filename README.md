@@ -107,3 +107,7 @@ data manager would decide which in-flight transactions to commit.
 a lock) at a site and the site then fails, then T continues to execute
 and then aborts only at its commit time (unless T is aborted earlier due to
 deadlock).
+
+## System Design
+
+
